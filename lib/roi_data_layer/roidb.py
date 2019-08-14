@@ -12,7 +12,8 @@ from model.utils.config import cfg
 from datasets.factory import get_imdb
 import PIL
 import pdb
-
+import ipdb
+st  = ipdb.set_trace
 def prepare_roidb(imdb):
   """Enrich the imdb's roidb by adding some derived quantities that
   are useful for training. This function precomputes the maximum
@@ -39,6 +40,7 @@ def prepare_roidb(imdb):
   for i in range(len(imdb.image_index)):
     roidb[i]['img_id'] = imdb.image_id_at(i)
     roidb[i]['image'] = imdb.image_path_at(i)
+    # st()
     if not (imdb.name.startswith('coco')):
       roidb[i]['width'] = sizes[i][0]
       roidb[i]['height'] = sizes[i][1]

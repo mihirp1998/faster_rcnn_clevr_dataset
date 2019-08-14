@@ -100,7 +100,7 @@ class clevr(imdb):
         """
         Return the default path where PASCAL VOC is expected to be installed.
         """
-        return os.path.join(cfg.DATA_DIR, 'CLEVR_RPN')
+        return os.path.join(cfg.DATA_DIR, 'CLEVR_RPN_MULTIANGLE_FINAL_MORE_OBJ')
 
     def gt_roidb(self):
         """

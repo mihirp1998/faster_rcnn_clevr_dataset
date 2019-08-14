@@ -11,6 +11,15 @@ import ipdb
 import pickle
 st = ipdb.set_trace
 import copy
+import random
+def append_xml_node_attr(child, parent = None, text = None,doc=None):
+	ele = doc.createElement(child)
+	if not text is None:
+		text_node = doc.createTextNode(text)
+		ele.appendChild(text_node)
+	parent = doc if parent is None else parent
+	parent.appendChild(ele)
+	return ele
 
 def generate_xml(name,tree, img_size = (370, 1224, 3), \
 				 class_sets = ('pedestrian', 'car', 'cyclist'), \
@@ -49,48 +58,90 @@ def generate_xml(name,tree, img_size = (370, 1224, 3), \
 
 	doc = Document()
 
-	def append_xml_node_attr(child, parent = None, text = None):
-		ele = doc.createElement(child)
-		if not text is None:
-			text_node = doc.createTextNode(text)
-			ele.appendChild(text_node)
-		parent = doc if parent is None else parent
-		parent.appendChild(ele)
-		return ele
 
 	img_name = name+'.jpg'
 
 	# create header
-	annotation = append_xml_node_attr('annotation')
-	append_xml_node_attr('folder', parent = annotation, text='KITTI')
-	append_xml_node_attr('filename', parent = annotation, text=img_name)
-	source = append_xml_node_attr('source', parent=annotation)
-	append_xml_node_attr('database', parent=source, text='KITTI')
-	append_xml_node_attr('annotation', parent=source, text='KITTI')
-	append_xml_node_attr('image', parent=source, text='KITTI')
-	append_xml_node_attr('flickrid', parent=source, text='000000')
-	owner = append_xml_node_attr('owner', parent=annotation)
-	append_xml_node_attr('url', parent=owner, text = 'http://www.cvlibs.net/datasets/kitti/index.php')
-	size = append_xml_node_attr('size', annotation)
-	append_xml_node_attr('width', size, str(img_size[1]))
-	append_xml_node_attr('height', size, str(img_size[0]))
-	append_xml_node_attr('depth', size, str(img_size[2]))
-	append_xml_node_attr('segmented', parent=annotation, text='0')
+	annotation = append_xml_node_attr('annotation',doc=doc)
+	append_xml_node_attr('folder', parent = annotation, text='KITTI',doc=doc)
+	append_xml_node_attr('filename', parent = annotation, text=img_name,doc=doc)
+	source = append_xml_node_attr('source', parent=annotation,doc=doc)
+	append_xml_node_attr('database', parent=source, text='KITTI',doc=doc)
+	append_xml_node_attr('annotation', parent=source, text='KITTI',doc=doc)
+	append_xml_node_attr('image', parent=source, text='KITTI',doc=doc)
+	append_xml_node_attr('flickrid', parent=source, text='000000',doc=doc)
+	owner = append_xml_node_attr('owner', parent=annotation,doc=doc)
+	append_xml_node_attr('url', parent=owner, text = 'http://www.cvlibs.net/datasets/kitti/index.php',doc=doc)
+	size = append_xml_node_attr('size', annotation,doc=doc)
+	append_xml_node_attr('width', size, str(img_size[1]),doc=doc)
+	append_xml_node_attr('height', size, str(img_size[0]),doc=doc)
+	append_xml_node_attr('depth', size, str(img_size[2]),doc=doc)
+	append_xml_node_attr('segmented', parent=annotation, text='0',doc=doc)
 
 	# create objects
 	objs = []
 	# for line in lines:
-	for child in tree.children:
-		assert child.function == "describe"
-		cls = child.word
-		if not doncateothers and cls not in class_sets:
-			continue
+	# if tree.function == "layout":
+	# 	print("hello")
+	# 	st()
+	objs = compose_tree(tree,objs,doc,annotation)
+	# for child in tree.children:
+	# 	assert child.function == "describe"
+	# 	cls = child.word
+	# 	if not doncateothers and cls not in class_sets:
+	# 		continue
+	# 	cls = 'dontcare' if cls not in class_sets else cls
+	# 	obj = append_xml_node_attr('object', parent=annotation,doc=doc)
+	# 	occlusion = 0
+
+	# 	x1,y1,h,w = child.bbox
+	# 	x2,y2 = (x1+h,y1+w)
+
+	# 	# x1, y1, x2, y2 = int(float(splitted_line[4]) + 1), int(float(splitted_line[5]) + 1), \
+	# 	# 				 int(float(splitted_line[6]) + 1), int(float(splitted_line[7]) + 1)
+	# 	# truncation = float(splitted_line[1])
+	# 	truncation= 0.00
+	# 	# difficult = 1 if _is_hard(cls, truncation, occlusion, x1, y1, x2, y2) else 0
+	# 	# truncted = 0 if truncation < 0.5 else 1
+	# 	truncted = 0
+	# 	difficult = 0
+	# 	append_xml_node_attr('name', parent=obj, text=cls,doc=doc)
+	# 	append_xml_node_attr('pose', parent=obj, text='Left',doc=doc)
+	# 	append_xml_node_attr('truncated', parent=obj, text=str(truncted),doc=doc)
+	# 	append_xml_node_attr('difficult', parent=obj, text=str(int(difficult)),doc=doc)
+	# 	bb = append_xml_node_attr('bndbox', parent=obj,doc=doc)
+	# 	append_xml_node_attr('xmin', parent=bb, text=str(x1),doc=doc)
+	# 	append_xml_node_attr('ymin', parent=bb, text=str(y1),doc=doc)
+	# 	append_xml_node_attr('xmax', parent=bb, text=str(x2),doc=doc)
+	# 	append_xml_node_attr('ymax', parent=bb, text=str(y2),doc=doc)
+
+	# 	o = {'class': cls, 'box': np.asarray([x1, y1, x2, y2], dtype=float), \
+	# 		 'truncation': truncation, 'difficult': difficult, 'occlusion': occlusion}
+	# 	objs.append(o)
+
+	return  doc, objs
+
+def compose_tree(treex, objs,doc,annotation):
+	for i in range(0, treex.num_children):
+		objs = compose_tree(treex.children[i],objs,doc,annotation)
+	if treex.function == "describe":
+		cls = treex.word
+
+
 		cls = 'dontcare' if cls not in class_sets else cls
-		obj = append_xml_node_attr('object', parent=annotation)
+		obj = append_xml_node_attr('object', parent=annotation,doc=doc)
 		occlusion = 0
 
-		x1,y1,h,w = child.bbox
+		x1,y1,h,w = treex.bbox
 		x2,y2 = (x1+h,y1+w)
+		if x2 > 64:
+			x2 = 63
+			# st()
+		if x1 > 64:
+			x1=63
+			# st()
+		# if x1 > x2:
+		# 	st()
 
 		# x1, y1, x2, y2 = int(float(splitted_line[4]) + 1), int(float(splitted_line[5]) + 1), \
 		# 				 int(float(splitted_line[6]) + 1), int(float(splitted_line[7]) + 1)
@@ -100,21 +151,20 @@ def generate_xml(name,tree, img_size = (370, 1224, 3), \
 		# truncted = 0 if truncation < 0.5 else 1
 		truncted = 0
 		difficult = 0
-		append_xml_node_attr('name', parent=obj, text=cls)
-		append_xml_node_attr('pose', parent=obj, text='Left')
-		append_xml_node_attr('truncated', parent=obj, text=str(truncted))
-		append_xml_node_attr('difficult', parent=obj, text=str(int(difficult)))
-		bb = append_xml_node_attr('bndbox', parent=obj)
-		append_xml_node_attr('xmin', parent=bb, text=str(x1))
-		append_xml_node_attr('ymin', parent=bb, text=str(y1))
-		append_xml_node_attr('xmax', parent=bb, text=str(x2))
-		append_xml_node_attr('ymax', parent=bb, text=str(y2))
+		append_xml_node_attr('name', parent=obj, text=cls,doc=doc)
+		append_xml_node_attr('pose', parent=obj, text='Left',doc=doc)
+		append_xml_node_attr('truncated', parent=obj, text=str(truncted),doc=doc)
+		append_xml_node_attr('difficult', parent=obj, text=str(int(difficult)),doc=doc)
+		bb = append_xml_node_attr('bndbox', parent=obj,doc=doc)
+		append_xml_node_attr('xmin', parent=bb, text=str(x1),doc=doc)
+		append_xml_node_attr('ymin', parent=bb, text=str(y1),doc=doc)
+		append_xml_node_attr('xmax', parent=bb, text=str(x2),doc=doc)
+		append_xml_node_attr('ymax', parent=bb, text=str(y2),doc=doc)
 
 		o = {'class': cls, 'box': np.asarray([x1, y1, x2, y2], dtype=float), \
 			 'truncation': truncation, 'difficult': difficult, 'occlusion': occlusion}
 		objs.append(o)
-
-	return  doc, objs
+	return objs
 
 def _is_hard(cls, truncation, occlusion, x1, y1, x2, y2):
 	# Easy: Min. bounding box height: 40 Px, Max. occlusion level: Fully visible, Max. truncation: 15 %
@@ -216,8 +266,8 @@ if __name__ == '__main__':
 	args = parse_args()
 
 	_clevr = args.clevr_dir
-	_clevrimgpath = os.path.join("/Users/mihirprabhudesai/Documents/projects/rebuttal_pnp_original_ashar/sample_front_back_data/2dData/" , _clevr,'images','train')
-	_clevrtreepath = _clevrimgpath.replace("images","trees_p2")
+	_clevrimgpath = os.path.join("/home/sajaved/data/" , _clevr,'images','train')
+	_clevrtreepath = _clevrimgpath.replace("images","trees")
 	# st()
 
 	_clevr_img_files = glob.glob(_clevrimgpath+"/*")
@@ -243,7 +293,8 @@ if __name__ == '__main__':
 		allclasses = {}
 		fs = [open(os.path.join(_dest_set_dir, cls + '_' + dset + '.txt'), 'w') for cls in class_sets ]
 		ftrain = open(os.path.join(_dest_set_dir, dset + '.txt'), 'w')
-
+		fval = open(os.path.join(_dest_set_dir, 'val' + '.txt'), 'w')
+		# st()
 		# files = glob.glob(os.path.join(_labeldir, '*.txt'))
 		# files.sort()
 		# st()
@@ -253,7 +304,7 @@ if __name__ == '__main__':
 			stem_img = img_file.split("/")[-1][:-4]
 			assert stem_img == stem
 
-			with open(tree_file, 'rB') as f:
+			with open(tree_file, 'rb') as f:
 				tree  = pickle.load(f)
 			# img_file = os.path.join(_imagedir, stem + '.png')
 			img = cv2.imread(img_file)
@@ -269,8 +320,11 @@ if __name__ == '__main__':
 			xmlfile = os.path.join(_dest_label_dir, stem + '.xml')
 			with open(xmlfile, 'w') as f:
 				f.write(doc.toprettyxml(indent='	'))
+			if random.random() <0.9:
+				ftrain.writelines(stem + '\n')
+			else:
+				fval.writelines(stem + '\n')
 
-			ftrain.writelines(stem + '\n')
 
 			# build [cls_train.txt]
 			# Car_train.txt: 0000xxx [1 | -1]
@@ -293,11 +347,12 @@ if __name__ == '__main__':
 
 		(f.close() for f in fs)
 		ftrain.close()
+		fval.close()
 
-		print '~~~~~~~~~~~~~~~~~~~'
-		print allclasses
-		print '~~~~~~~~~~~~~~~~~~~'
-		shutil.copyfile(os.path.join(_dest_set_dir, 'train.txt'), os.path.join(_dest_set_dir, 'val.txt'))
+		print('~~~~~~~~~~~~~~~~~~~')
+		print(allclasses)
+		print('~~~~~~~~~~~~~~~~~~~')
+		# shutil.copyfile(os.path.join(_dest_set_dir, 'train.txt'), os.path.join(_dest_set_dir, 'val.txt'))
 		shutil.copyfile(os.path.join(_dest_set_dir, 'train.txt'), os.path.join(_dest_set_dir, 'trainval.txt'))
 		for cls in class_sets:
 			shutil.copyfile(os.path.join(_dest_set_dir, cls + '_train.txt'),
