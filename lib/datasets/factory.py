@@ -15,6 +15,7 @@ from datasets.pascal_voc import pascal_voc
 from datasets.coco import coco
 from datasets.imagenet import imagenet
 from datasets.vg import vg
+from datasets.clevr import clevr
 
 import numpy as np
 
@@ -41,6 +42,13 @@ for year in ['2015']:
   for split in ['test', 'test-dev']:
     name = 'coco_{}_{}'.format(year, split)
     __sets[name] = (lambda split=split, year=year: coco(split, year))
+
+
+for split in ['train', 'val', 'trainval', 'test']:
+    name = 'clevr_{}'.format(split)
+    __sets[name] = (lambda split=split:
+                    clevr(split))
+
 
 # Set up vg_<split>
 # for version in ['1600-400-20']:
