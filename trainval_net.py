@@ -6,7 +6,8 @@
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
-
+import ipdb
+st=ipdb.set_trace
 import _init_paths
 import os
 import sys
@@ -58,7 +59,7 @@ def parse_args():
                       default=10000, type=int)
 
   parser.add_argument('--save_dir', dest='save_dir',
-                      help='directory to save models', default="models",
+                      help='directory to save models', default="modelsNew",
                       type=str)
   parser.add_argument('--nw', dest='num_workers',
                       help='number of workers to load data',
@@ -74,7 +75,7 @@ def parse_args():
                       action='store_true')
   parser.add_argument('--bs', dest='batch_size',
                       help='batch_size',
-                      default=1, type=int)
+                      default=24, type=int)
   parser.add_argument('--cag', dest='class_agnostic',
                       help='whether to perform class_agnostic bbox regression',
                       action='store_true')
@@ -291,6 +292,7 @@ if __name__ == '__main__':
     print("loaded checkpoint %s" % (load_name))
 
   if args.mGPUs:
+    st()
     fasterRCNN = nn.DataParallel(fasterRCNN)
 
   iters_per_epoch = int(train_size / args.batch_size)

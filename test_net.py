@@ -115,7 +115,7 @@ if __name__ == '__main__':
       args.set_cfgs = ['ANCHOR_SCALES', '[8, 16, 32]', 'ANCHOR_RATIOS', '[0.5,1,2]']
   elif args.dataset == "clevr_trainval":
       args.imdb_name = "clevr_trainval"
-      args.imdbval_name = "clevr_val"
+      args.imdbval_name = "clevr_trainval"
       args.set_cfgs = ['ANCHOR_SCALES', '[8, 16, 32]', 'ANCHOR_RATIOS', '[0.5,1,2]', 'MAX_NUM_GT_BOXES', '20']
   elif args.dataset == "coco":
       args.imdb_name = "coco_2014_train+coco_2014_valminusminival"
@@ -277,7 +277,8 @@ if __name__ == '__main__':
       if vis:
           import glob
           import random
-          val = random.choice(glob.glob("frontimages/*"))
+          val = imdb.image_path_at(i)
+          # val = random.choice(glob.glob("frontimages/*"))
           im = cv2.imread(val)
           im2show = np.copy(im)
       for j in xrange(1, imdb.num_classes):
