@@ -1,8 +1,12 @@
 # A *Faster* Pytorch Implementation of Faster R-CNN
 
 ## Introduction
-
+<!-- 
+<<<<<<< HEAD
 ### :boom: Good news! This repo supports pytorch-1.0 now!!! We borrowed some code and techniques from [maskrcnn-benchmark](https://github.com/facebookresearch/maskrcnn-benchmark). Just go to pytorch-1.0 branch!
+======= -->
+### Good news! This repo supports pytorch-1.0 now!!! We borrowed some code and techniques from [maskrcnn-benchmark](https://github.com/facebookresearch/maskrcnn-benchmark).
+<!-- >>>>>>> 6f0c63b64dde6dc4eb3e24f90650d789f96f4c75 -->
 
 This project is a *faster* pytorch implementation of faster R-CNN, aimed to accelerating the training of faster R-CNN object detection models. Recently, there are a number of good implementations:
 
@@ -14,7 +18,7 @@ This project is a *faster* pytorch implementation of faster R-CNN, aimed to acce
 
 * [ruotianluo/pytorch-faster-rcnn](https://github.com/ruotianluo/pytorch-faster-rcnn), developed based on Pytorch + TensorFlow + Numpy
 
-During our implementing, we referred the above implementations, especailly [longcw/faster_rcnn_pytorch](https://github.com/longcw/faster_rcnn_pytorch). However, our implementation has several unique and new features compared with the above implementations:
+During our implementing, we referred the above implementations, especially [longcw/faster_rcnn_pytorch](https://github.com/longcw/faster_rcnn_pytorch). However, our implementation has several unique and new features compared with the above implementations:
 
 * **It is pure Pytorch code**. We convert all the numpy implementations to pytorch!
 
@@ -32,9 +36,15 @@ During our implementing, we referred the above implementations, especailly [long
 
 - [x] Support both python2 and python3 (great thanks to [cclauss](https://github.com/cclauss)).
 - [x] Add deformable pooling layer (mainly supported by [Xander](https://github.com/xanderchf)).
+<<<<<<< HEAD
 - [x] Support pytorch-0.4.0 (this branch).
 - [x] Support tensorboardX.
 - [x] Support pytorch-1.0 (go to pytorch-1.0 branch).
+=======
+- [x] Support pytorch-0.4.0 (go to master branch).
+- [x] Support tensorboardX.
+- [x] Support pytorch-1.0 (this branch).
+>>>>>>> 6f0c63b64dde6dc4eb3e24f90650d789f96f4c75
 
 ## Other Implementations
 
@@ -110,7 +120,7 @@ cd faster-rcnn.pytorch && mkdir data
 ### prerequisites
 
 * Python 2.7 or 3.6
-* Pytorch 0.4.0 (**now it does not support 0.4.1 or higher**)
+* Pytorch 1.0 (for Pytorch 0.4.0 go to master branch)
 * CUDA 8.0 or higher
 
 ### Data Preparation
@@ -137,18 +147,6 @@ Download them and put them into the data/pretrained_model/.
 
 ### Compilation
 
-As pointed out by [ruotianluo/pytorch-faster-rcnn](https://github.com/ruotianluo/pytorch-faster-rcnn), choose the right `-arch` in `make.sh` file, to compile the cuda code:
-
-  | GPU model  | Architecture |
-  | ------------- | ------------- |
-  | TitanX (Maxwell/Pascal) | sm_52 |
-  | GTX 960M | sm_50 |
-  | GTX 1080 (Ti) | sm_61 |
-  | Grid K520 (AWS g2.2xlarge) | sm_30 |
-  | Tesla K80 (AWS p2.xlarge) | sm_37 |
-
-More details about setting the architecture can be found [here](https://developer.nvidia.com/cuda-gpus) or [here](http://arnon.dk/matching-sm-architectures-arch-and-gencode-for-various-nvidia-cards/)
-
 Install all the python dependencies using pip:
 ```
 pip install -r requirements.txt
@@ -158,7 +156,7 @@ Compile the cuda dependencies using following simple commands:
 
 ```
 cd lib
-sh make.sh
+python setup.py build develop
 ```
 
 It will compile all the modules you need, including NMS, ROI_Pooing, ROI_Align and ROI_Crop. The default version is compiled with Python 2.7, please compile by yourself if you are using a different python version.
