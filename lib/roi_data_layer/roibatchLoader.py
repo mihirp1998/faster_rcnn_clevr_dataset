@@ -21,7 +21,7 @@ import pdb
 import ipdb
 st = ipdb.set_trace
 class roibatchLoader(data.Dataset):
-  def __init__(self, roidb, ratio_list, ratio_index, batch_size, num_classes, training=True, normalize=None):
+  def __init__(self, roidb, ratio_list, ratio_index, batch_size, num_classes, training=True, normalize=None,depth=False):
     self._roidb = roidb
     self._num_classes = num_classes
     # we make the height of image consistent to trim_height, trim_width
@@ -34,7 +34,7 @@ class roibatchLoader(data.Dataset):
     self.ratio_index = ratio_index
     self.batch_size = batch_size
     self.data_size = len(self.ratio_list)
-
+    self.depth = depth
     # given the ratio_list, we want to make the ratio same for each batch.
     self.ratio_list_batch = torch.Tensor(self.data_size).zero_()
     num_batch = int(np.ceil(len(ratio_index) / batch_size))
@@ -64,8 +64,9 @@ class roibatchLoader(data.Dataset):
     # get the anchor index for current sample index
     # here we set the anchor index to the last one
     # sample in this group
+    # st()
     minibatch_db = [self._roidb[index_ratio]]
-    blobs = get_minibatch(minibatch_db, self._num_classes)
+    blobs = get_minibatch(minibatch_db, self._num_classes, depth=self.depth)
     data = torch.from_numpy(blobs['data'])
     im_info = torch.from_numpy(blobs['im_info'])
     # we need to random shuffle the bounding box.
@@ -202,10 +203,12 @@ class roibatchLoader(data.Dataset):
             # permute trim_data to adapt to downstream processing
         padding_data = padding_data.permute(2, 0, 1).contiguous()
         im_info = im_info.view(3)
-
         return padding_data, im_info, gt_boxes_padding, num_boxes
     else:
-        data = data.permute(0, 3, 1, 2).contiguous().view(3, data_height, data_width)
+        if self.depth:
+            data = data.permute(0, 3, 1, 2).contiguous().view(4, data_height, data_width)
+        else:
+            data = data.permute(0, 3, 1, 2).contiguous().view(3, data_height, data_width)
         im_info = im_info.view(3)
 
         gt_boxes = torch.FloatTensor([1,1,1,1,1])

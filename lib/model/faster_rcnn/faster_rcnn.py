@@ -14,6 +14,8 @@ from model.roi_align.modules.roi_align import RoIAlignAvg
 from model.rpn.proposal_target_layer_cascade import _ProposalTargetLayer
 import time
 import pdb
+import ipdb
+st = ipdb.set_trace
 from model.utils.net_utils import _smooth_l1_loss, _crop_pool_layer, _affine_grid_gen, _affine_theta
 
 class _fasterRCNN(nn.Module):
@@ -42,7 +44,7 @@ class _fasterRCNN(nn.Module):
         im_info = im_info.data
         gt_boxes = gt_boxes.data
         num_boxes = num_boxes.data
-
+        # st()
         # feed image data to base model to obtain base feature map
         base_feat = self.RCNN_base(im_data)
 

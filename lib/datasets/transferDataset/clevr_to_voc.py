@@ -12,6 +12,9 @@ import pickle
 st = ipdb.set_trace
 import copy
 import random
+diff_class = False
+import imageio
+from scipy.misc import imsave
 def append_xml_node_attr(child, parent = None, text = None,doc=None):
 	ele = doc.createElement(child)
 	if not text is None:
@@ -125,7 +128,10 @@ def compose_tree(treex, objs,doc,annotation):
 	for i in range(0, treex.num_children):
 		objs = compose_tree(treex.children[i],objs,doc,annotation)
 	if treex.function == "describe":
-		cls = treex.word
+		if diff_class:
+			cls = treex.word
+		else:
+			cls = 'single'
 
 
 		cls = 'dontcare' if cls not in class_sets else cls
@@ -186,13 +192,16 @@ def parse_args():
 	"""
 	Parse input arguments
 	"""
-	parser = argparse.ArgumentParser(description='Convert KITTI dataset into Pascal voc format')
+	parser = argparse.ArgumentParser(description='Convert clevr dataset into Pascal voc format')
 	parser.add_argument('--clevr_dir', dest='clevr_dir',
-						help='path to kitti root',
-						default='./data/KITTI', type=str)
+						help='which folder to load',
+						default='CLEVR_64_36_MORE_OBJ_FINAL_2D', type=str)
+	parser.add_argument('--mode', dest='mode',
+					help='which to load',
+					default='test', type=str)
 	parser.add_argument('--out', dest='outdir',
 						help='path to voc-kitti',
-						default='./data/KITTIVOC', type=str)
+						default='./data/CLEVR_MORE_OBJ', type=str)
 	parser.add_argument('--draw', dest='draw',
 						help='draw rects on images',
 						default=0, type=int)
@@ -207,24 +216,24 @@ def parse_args():
 	return args
 
 def _draw_on_image(img, objs, class_sets_dict):
-    colors = [(86, 0, 240), (173, 225, 61), (54, 137, 255),\
-              (151, 0, 255)]
-    font = cv2.FONT_HERSHEY_SIMPLEX
-    old_img = copy.deepcopy(img)
-    # cyan is sphere....red is cylinder... orange is cube
-    for ind, obj in enumerate(objs):
-        if obj['box'] is None: continue
-        x1, y1, x2, y2 = obj['box'].astype(int)
-        cls_id = class_sets_dict[obj['class']]
-        if obj['class'] == 'dontcare':
-            cv2.rectangle(img, (int(x1), int(y1)), (int(x2), int(y2)), (255, 0, 0), 1)
-            continue
-        cv2.rectangle(img, (int(x1), int(y1)), (int(x2), int(y2)), colors[cls_id % len(colors)], 1)
-        # text = '{:s}*|'.format(obj['class'][:3]) if obj['difficult'] == 1 else '{:s}|'.format(obj['class'][:3])
-        # text += '{:.1f}|'.format(obj['truncation'])
-        # text += str(obj['occlusion'])
-        # cv2.putText(img, text, (x1-2, y2-2), font, 0.5, (255, 0, 255), 1)
-    return np.concatenate([img,old_img],1)
+	colors = [(86, 0, 240), (173, 225, 61), (54, 137, 255),\
+			  (151, 0, 255)]
+	font = cv2.FONT_HERSHEY_SIMPLEX
+	old_img = copy.deepcopy(img)
+	# cyan is sphere....red is cylinder... orange is cube
+	for ind, obj in enumerate(objs):
+		if obj['box'] is None: continue
+		x1, y1, x2, y2 = obj['box'].astype(int)
+		cls_id = class_sets_dict[obj['class']]
+		if obj['class'] == 'dontcare':
+			cv2.rectangle(img, (int(x1), int(y1)), (int(x2), int(y2)), (255, 0, 0), 1)
+			continue
+		cv2.rectangle(img, (int(x1), int(y1)), (int(x2), int(y2)), colors[cls_id % len(colors)], 1)
+		# text = '{:s}*|'.format(obj['class'][:3]) if obj['difficult'] == 1 else '{:s}|'.format(obj['class'][:3])
+		# text += '{:.1f}|'.format(obj['truncation'])
+		# text += str(obj['occlusion'])
+		# cv2.putText(img, text, (x1-2, y2-2), font, 0.5, (255, 0, 255), 1)
+	return np.concatenate([img,old_img],1)
 
 def build_voc_dirs(outdir):
 	"""
@@ -254,10 +263,12 @@ def build_voc_dirs(outdir):
 	mkdir(os.path.join(outdir, 'ImageSets', 'Main'))
 	mkdir(os.path.join(outdir, 'ImageSets', 'Segmentation'))
 	mkdir(os.path.join(outdir, 'JPEGImages'))
+	mkdir(os.path.join(outdir, 'DepthImages'))
+
 	mkdir(os.path.join(outdir, 'SegmentationClass'))
 	mkdir(os.path.join(outdir, 'SegmentationObject'))
 
-	return os.path.join(outdir, 'Annotations'), os.path.join(outdir, 'JPEGImages'), os.path.join(outdir, 'ImageSets', 'Main')
+	return os.path.join(outdir, 'Annotations'), os.path.join(outdir, 'JPEGImages'), os.path.join(outdir, 'DepthImages'), os.path.join(outdir, 'ImageSets', 'Main')
 
 
 
@@ -266,7 +277,10 @@ if __name__ == '__main__':
 	args = parse_args()
 
 	_clevr = args.clevr_dir
-	_clevrimgpath = os.path.join("/home/sajaved/data/" , _clevr,'images','train')
+	_mode = args.mode
+
+	_clevrimgpath = os.path.join("../pnp_inside/data/CLEVR/" , _clevr,'images',_mode)
+
 	_clevrtreepath = _clevrimgpath.replace("images","trees")
 	# st()
 
@@ -277,22 +291,26 @@ if __name__ == '__main__':
 
 	_outdir = args.outdir
 	_draw = bool(args.draw)
-	_dest_label_dir, _dest_img_dir, _dest_set_dir = build_voc_dirs(_outdir)
+	_dest_label_dir, _dest_img_dir, _dest_depth_dir, _dest_set_dir = build_voc_dirs(_outdir)
 	_doncateothers = bool(args.dontcareothers)
-
 	# for kitti only provides training labels
-	for dset in ['train']:
+	for dset in [_mode]:
 
 		# _labeldir = os.path.join(_kittidir, 'training', 'label_2')
 		# _imagedir = os.path.join(_kittidir, 'training', 'image_2')
 		"""
 		class_sets = ('pedestrian', 'cyclist', 'car', 'person_sitting', 'van', 'truck', 'tram', 'misc', 'dontcare')
 		"""
-		class_sets = ('cylinder', 'sphere', 'cube')
+		if diff_class:
+			class_sets = ('cylinder', 'sphere', 'cube')
+		else:
+			class_sets = ['single']
+		# st()
 		class_sets_dict = dict((k, i) for i, k in enumerate(class_sets))
 		allclasses = {}
 		fs = [open(os.path.join(_dest_set_dir, cls + '_' + dset + '.txt'), 'w') for cls in class_sets ]
 		ftrain = open(os.path.join(_dest_set_dir, dset + '.txt'), 'w')
+		# st()
 		fval = open(os.path.join(_dest_set_dir, 'val' + '.txt'), 'w')
 		# st()
 		# files = glob.glob(os.path.join(_labeldir, '*.txt'))
@@ -307,16 +325,24 @@ if __name__ == '__main__':
 			with open(tree_file, 'rb') as f:
 				tree  = pickle.load(f)
 			# img_file = os.path.join(_imagedir, stem + '.png')
+			depth_file = img_file.replace("images","depth").replace("png","exr")
+			# st()
+			depth = np.array(imageio.imread(depth_file, format='EXR-FI'))[:,:,0]
+			depth = depth * (100 - 0) + 0
+			depth.astype(np.float32)			
 			img = cv2.imread(img_file)
 			img_size = img.shape
 
 			# st()
 			doc, objs = generate_xml(stem,tree, img_size, class_sets=class_sets, doncateothers=_doncateothers)
 			if _draw:
-			    val = _draw_on_image(img, objs, class_sets_dict)
-			    cv2.imwrite(os.path.join('demo.jpg'), val)
-			    # st()
+				val = _draw_on_image(img, objs, class_sets_dict)
+				cv2.imwrite(os.path.join('demo.jpg'), val)
+				st()
+			# st()
 			cv2.imwrite(os.path.join(_dest_img_dir, stem + '.jpg'), img)
+			imsave(os.path.join(_dest_depth_dir, stem + '.jpg'), depth)
+
 			xmlfile = os.path.join(_dest_label_dir, stem + '.xml')
 			with open(xmlfile, 'w') as f:
 				f.write(doc.toprettyxml(indent='	'))
@@ -353,10 +379,12 @@ if __name__ == '__main__':
 		print(allclasses)
 		print('~~~~~~~~~~~~~~~~~~~')
 		# shutil.copyfile(os.path.join(_dest_set_dir, 'train.txt'), os.path.join(_dest_set_dir, 'val.txt'))
-		shutil.copyfile(os.path.join(_dest_set_dir, 'train.txt'), os.path.join(_dest_set_dir, 'trainval.txt'))
-		for cls in class_sets:
-			shutil.copyfile(os.path.join(_dest_set_dir, cls + '_train.txt'),
-							os.path.join(_dest_set_dir, cls + '_trainval.txt'))
-			shutil.copyfile(os.path.join(_dest_set_dir, cls + '_train.txt'),
-							os.path.join(_dest_set_dir, cls + '_val.txt'))
+		shutil.copyfile(os.path.join(_dest_set_dir, '{}.txt'.format(dset)), os.path.join(_dest_set_dir, 'trainval.txt'))
+		# shutil.copyfile(os.path.join(_dest_set_dir, '{}.txt'.format(dset)), os.path.join(_dest_set_dir, 'val.txt'))
+
+		# for cls in class_sets:
+		# 	shutil.copyfile(os.path.join(_dest_set_dir, cls + '_train.txt'),
+		# 					os.path.join(_dest_set_dir, cls + '_trainval.txt'))
+		# 	shutil.copyfile(os.path.join(_dest_set_dir, cls + '_train.txt'),
+		# 					os.path.join(_dest_set_dir, cls + '_val.txt'))
 

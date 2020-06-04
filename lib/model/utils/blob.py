@@ -10,6 +10,8 @@
 import numpy as np
 # from scipy.misc import imread, imresize
 import cv2
+import ipdb
+st=ipdb.set_trace
 
 try:
     xrange          # Python 2
@@ -24,7 +26,9 @@ def im_list_to_blob(ims):
     """
     max_shape = np.array([im.shape for im in ims]).max(axis=0)
     num_images = len(ims)
-    blob = np.zeros((num_images, max_shape[0], max_shape[1], 3),
+    channel = ims[0].shape[-1]
+    # st()
+    blob = np.zeros((num_images, max_shape[0], max_shape[1], channel),
                     dtype=np.float32)
     for i in xrange(num_images):
         im = ims[i]
@@ -46,6 +50,7 @@ def prep_im_for_blob(im, pixel_means, target_size, max_size):
     # if np.round(im_scale * im_size_max) > max_size:
     #     im_scale = float(max_size) / float(im_size_max)
     # im = imresize(im, im_scale)
+
     im = cv2.resize(im, None, None, fx=im_scale, fy=im_scale,
                     interpolation=cv2.INTER_LINEAR)
 

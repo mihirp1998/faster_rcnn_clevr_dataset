@@ -16,6 +16,9 @@ import pprint
 import pdb
 import time
 
+import ipdb
+st = ipdb.set_trace
+
 import cv2
 
 import torch
@@ -33,7 +36,7 @@ from model.utils.net_utils import save_net, load_net, vis_detections
 
 from model.faster_rcnn.vgg16 import vgg16
 from model.faster_rcnn.resnet import resnet
-
+from collections import defaultdict
 try:
     xrange          # Python 2
 except NameError:
@@ -44,7 +47,19 @@ def parse_args():
   """
   Parse input arguments
   """
+
   parser = argparse.ArgumentParser(description='Train a Fast R-CNN network')
+    
+  parser.add_argument('--dataset_care', dest='dataset_care',
+                    help='dataset folder name',
+                    default='', required=True,type=str)
+  parser.add_argument('--noclass', dest='noclass',
+                      help='if you dont want any classes',
+                      default=True, type=bool,required=True)  
+
+  # CLEVR_RPN_MULTIANGLE_FINAL_MORE_OBJ
+  # CLEVR_RPN_MULTIANGLE_FINAL_MORE_OBJ_NO_CLASS
+
   parser.add_argument('--dataset', dest='dataset',
                       help='training dataset',
                       default='clevr_trainval', type=str)
@@ -63,6 +78,12 @@ def parse_args():
   parser.add_argument('--cuda', dest='cuda',
                       help='whether use CUDA',
                       action='store_true')
+  parser.add_argument('--depth', dest='depth',
+                      help='decides on whether to concat rgb with depths',
+                      action='store_true')
+  parser.add_argument('--name', dest='info_name',
+                    help='name to add to checkpoint',
+                    default="info name", type=str)
   parser.add_argument('--ls', dest='large_scale',
                       help='whether use large imag scale',
                       action='store_true')
@@ -87,6 +108,10 @@ def parse_args():
   parser.add_argument('--vis', dest='vis',
                       help='visualization mode',
                       action='store_true')
+  parser.add_argument('--store_detections', dest='store_detections',
+                      help='store detection mode',
+                      action='store_true')
+
   args = parser.parse_args()
   return args
 
@@ -95,9 +120,10 @@ momentum = cfg.TRAIN.MOMENTUM
 weight_decay = cfg.TRAIN.WEIGHT_DECAY
 
 if __name__ == '__main__':
-
+  predicted_pool = defaultdict(list)
   args = parse_args()
-
+  cfg.DATA_DIR_CARE = args.dataset_care
+  cfg.NO_CLASS = args.noclass
   print('Called with args:')
   print(args)
 
@@ -115,7 +141,7 @@ if __name__ == '__main__':
       args.set_cfgs = ['ANCHOR_SCALES', '[8, 16, 32]', 'ANCHOR_RATIOS', '[0.5,1,2]']
   elif args.dataset == "clevr_trainval":
       args.imdb_name = "clevr_trainval"
-      args.imdbval_name = "clevr_trainval"
+      args.imdbval_name = "clevr_val"
       args.set_cfgs = ['ANCHOR_SCALES', '[8, 16, 32]', 'ANCHOR_RATIOS', '[0.5,1,2]', 'MAX_NUM_GT_BOXES', '20']
   elif args.dataset == "coco":
       args.imdb_name = "coco_2014_train+coco_2014_valminusminival"
@@ -150,11 +176,11 @@ if __name__ == '__main__':
   if not os.path.exists(input_dir):
     raise Exception('There is no input directory for loading network from ' + input_dir)
   load_name = os.path.join(input_dir,
-    'faster_rcnn_{}_{}_{}.pth'.format(args.checksession, args.checkepoch, args.checkpoint))
+    'faster_rcnn_{}_{}_{}_{}.pth'.format(args.checksession, args.checkepoch, args.checkpoint,args.info_name))
 
   # initilize the network here.
   if args.net == 'vgg16':
-    fasterRCNN = vgg16(imdb.classes, pretrained=False, class_agnostic=args.class_agnostic)
+    fasterRCNN = vgg16(imdb.classes, pretrained=False, class_agnostic=args.class_agnostic,depth=args.depth)
   elif args.net == 'res101':
     fasterRCNN = resnet(imdb.classes, 101, pretrained=False, class_agnostic=args.class_agnostic)
   elif args.net == 'res50':
@@ -205,10 +231,12 @@ if __name__ == '__main__':
 
   vis = args.vis
 
+  store_detections = args.store_detections
+
   if vis:
     thresh = 0.05
   else:
-    thresh = 0.0
+    thresh = 0.00
 
   save_name = 'faster_rcnn_10'
   num_images = len(imdb.image_index)
@@ -217,7 +245,7 @@ if __name__ == '__main__':
 
   output_dir = get_output_dir(imdb, save_name)
   dataset = roibatchLoader(roidb, ratio_list, ratio_index, 1, \
-                        imdb.num_classes, training=False, normalize = False)
+                        imdb.num_classes, training=False, normalize = False,depth=args.depth)
   dataloader = torch.utils.data.DataLoader(dataset, batch_size=1,
                             shuffle=False, num_workers=0,
                             pin_memory=True)
@@ -229,15 +257,19 @@ if __name__ == '__main__':
 
   fasterRCNN.eval()
   empty_array = np.transpose(np.array([[],[],[],[],[]]), (1,0))
+  # st()
+  # num_images= 20
   for i in range(num_images):
 
       data = next(data_iter)
+      # st()
       im_data.data.resize_(data[0].size()).copy_(data[0])
       im_info.data.resize_(data[1].size()).copy_(data[1])
       gt_boxes.data.resize_(data[2].size()).copy_(data[2])
       num_boxes.data.resize_(data[3].size()).copy_(data[3])
 
       det_tic = time.time()
+      # st()
       rois, cls_prob, bbox_pred, \
       rpn_loss_cls, rpn_loss_box, \
       RCNN_loss_cls, RCNN_loss_bbox, \
@@ -245,7 +277,7 @@ if __name__ == '__main__':
 
       scores = cls_prob.data
       boxes = rois.data[:, :, 1:5]
-
+      # st()
       if cfg.TEST.BBOX_REG:
           # Apply bounding-box regression deltas
           box_deltas = bbox_pred.data
@@ -274,19 +306,26 @@ if __name__ == '__main__':
       det_toc = time.time()
       detect_time = det_toc - det_tic
       misc_tic = time.time()
+      # class_wise_eval=True
+      # st()
+      # if class_wise_eval:
       if vis:
           import glob
           import random
           val = imdb.image_path_at(i)
-          # val = random.choice(glob.glob("frontimages/*"))
+          # st()
+          # val = random.choice(glob.glob("forthis/*"))
+
           im = cv2.imread(val)
           im2show = np.copy(im)
       for j in xrange(1, imdb.num_classes):
+          # st()
           inds = torch.nonzero(scores[:,j]>thresh).view(-1)
           # if there is det
           if inds.numel() > 0:
             cls_scores = scores[:,j][inds]
             _, order = torch.sort(cls_scores, 0, True)
+            # st()
             if args.class_agnostic:
               cls_boxes = pred_boxes[inds, :]
             else:
@@ -299,6 +338,19 @@ if __name__ == '__main__':
             cls_dets = cls_dets[keep.view(-1).long()]
             if vis:
               im2show = vis_detections(im2show, imdb.classes[j], cls_dets.cpu().numpy(), 0.3)
+            # st()
+            # st()
+            if store_detections:
+              val = imdb.image_path_at(i)
+              dets = cls_dets.cpu().numpy()
+              for i_new in range(np.minimum(4, dets.shape[0])):
+                  bbox = tuple(int(np.round(x)) for x in dets[i_new, :4])
+                  score = dets[i_new, -1]
+                  if score > 0.3:
+                    predicted_pool[val.split("/")[-1]].append(bbox)
+                      # cv2.rectangle(im, bbox[0:2], bbox[2:4], (0, 204, 0), 0)
+                      # cv2.putText(im, '%s: %.3f' % (class_name, score), (bbox[0], bbox[1] + 15), cv2.FONT_HERSHEY_PLAIN,
+                      #             1.0, (0, 0, 255), thickness=1)
             all_boxes[j][i] = cls_dets.cpu().numpy()
           else:
             all_boxes[j][i] = empty_array
@@ -321,15 +373,21 @@ if __name__ == '__main__':
       sys.stdout.flush()
 
       if vis:
-          cv2.imwrite('result.png', im2show)
-          pdb.set_trace()
+          cv2.imwrite('dump/result_{}.png'.format(val.split("/")[-1]), im2show)
+          # cv2.imwrite('dump/result_{}_org.png'.format(val.split("/")[-1]), im)
+
+          # pdb.set_trace()
           #cv2.imshow('test', im2show)
           #cv2.waitKey(0)
 
   with open(det_file, 'wb') as f:
       pickle.dump(all_boxes, f, pickle.HIGHEST_PROTOCOL)
+  st()
+  det_file = det_file.replace("detections","detections_predicted_boxes")
+  pickle.dump(predicted_pool,open(det_file,"wb"))
 
   print('Evaluating detections')
+  # st()
   imdb.evaluate_detections(all_boxes, output_dir)
 
   end = time.time()

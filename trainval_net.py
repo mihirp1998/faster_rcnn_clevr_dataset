@@ -38,10 +38,22 @@ def parse_args():
   """
   Parse input arguments
   """
+
   parser = argparse.ArgumentParser(description='Train a Fast R-CNN network')
   parser.add_argument('--dataset', dest='dataset',
                       help='training dataset',
                       default='clevr_trainval', type=str)
+
+  parser.add_argument('--noclass', dest='noclass',
+                    help='if you dont want any classes',
+                    default=True, type=bool,required=True)
+  
+  parser.add_argument('--dataset_care', dest='dataset_care',
+                    help='dataset folder name',
+                    default='', required=True,type=str)
+
+  # CLEVR_RPN_MULTIANGLE_FINAL_MORE_OBJ
+  # CLEVR_RPN_MULTIANGLE_FINAL_MORE_OBJ_NO_CLASS
   parser.add_argument('--net', dest='net',
                     help='vgg16, res101',
                     default='vgg16', type=str)
@@ -59,31 +71,46 @@ def parse_args():
                       default=10000, type=int)
 
   parser.add_argument('--save_dir', dest='save_dir',
-                      help='directory to save models', default="modelsNew",
+                      help='directory to save models', default="models",
                       type=str)
+  
   parser.add_argument('--nw', dest='num_workers',
                       help='number of workers to load data',
                       default=0, type=int)
+  
   parser.add_argument('--cuda', dest='cuda',
                       help='whether use CUDA',
                       action='store_true')
+  
   parser.add_argument('--ls', dest='large_scale',
                       help='whether use large imag scale',
                       action='store_true')                      
+  
   parser.add_argument('--mGPUs', dest='mGPUs',
                       help='whether use multiple GPUs',
                       action='store_true')
+
   parser.add_argument('--bs', dest='batch_size',
                       help='batch_size',
                       default=24, type=int)
+  
   parser.add_argument('--cag', dest='class_agnostic',
                       help='whether to perform class_agnostic bbox regression',
+                      action='store_true')
+
+  parser.add_argument('--depth', dest='depth',
+                      help='decides on whether to concat rgb with depths',
                       action='store_true')
 
 # config optimization
   parser.add_argument('--o', dest='optimizer',
                       help='training optimizer',
                       default="sgd", type=str)
+
+  parser.add_argument('--name', dest='info_name',
+                    help='name to add to checkpoint',
+                    default="info name", type=str)
+
   parser.add_argument('--lr', dest='lr',
                       help='starting learning rate',
                       default=0.001, type=float)
@@ -103,6 +130,7 @@ def parse_args():
   parser.add_argument('--r', dest='resume',
                       help='resume checkpoint or not',
                       default=False, type=bool)
+
   parser.add_argument('--checksession', dest='checksession',
                       help='checksession to load model',
                       default=1, type=int)
@@ -152,6 +180,8 @@ if __name__ == '__main__':
 
   print('Called with args:')
   print(args)
+  cfg.DATA_DIR_CARE = args.dataset_care
+  cfg.NO_CLASS = args.noclass
 
   if args.dataset == "pascal_voc":
       args.imdb_name = "voc_2007_trainval"
@@ -211,7 +241,7 @@ if __name__ == '__main__':
   sampler_batch = sampler(train_size, args.batch_size)
 
   dataset = roibatchLoader(roidb, ratio_list, ratio_index, args.batch_size, \
-                           imdb.num_classes, training=True)
+                           imdb.num_classes, training=True,depth=args.depth)
 
   dataloader = torch.utils.data.DataLoader(dataset, batch_size=args.batch_size,
                             sampler=sampler_batch, num_workers=args.num_workers)
@@ -240,7 +270,7 @@ if __name__ == '__main__':
 
   # initilize the network here.
   if args.net == 'vgg16':
-    fasterRCNN = vgg16(imdb.classes, pretrained=True, class_agnostic=args.class_agnostic)
+    fasterRCNN = vgg16(imdb.classes, pretrained=True, class_agnostic=args.class_agnostic,depth=args.depth)
   elif args.net == 'res101':
     fasterRCNN = resnet(imdb.classes, 101, pretrained=True, class_agnostic=args.class_agnostic)
   elif args.net == 'res50':
@@ -279,7 +309,7 @@ if __name__ == '__main__':
 
   if args.resume:
     load_name = os.path.join(output_dir,
-      'faster_rcnn_{}_{}_{}.pth'.format(args.checksession, args.checkepoch, args.checkpoint))
+      'faster_rcnn_{}_{}_{}_{}.pth'.format(args.checksession, args.checkepoch, args.checkpoint,args.info_name))
     print("loading checkpoint %s" % (load_name))
     checkpoint = torch.load(load_name)
     args.session = checkpoint['session']
@@ -318,7 +348,7 @@ if __name__ == '__main__':
       im_info.data.resize_(data[1].size()).copy_(data[1])
       gt_boxes.data.resize_(data[2].size()).copy_(data[2])
       num_boxes.data.resize_(data[3].size()).copy_(data[3])
-
+      # st()
       fasterRCNN.zero_grad()
       rois, cls_prob, bbox_pred, \
       rpn_loss_cls, rpn_loss_box, \
@@ -375,7 +405,7 @@ if __name__ == '__main__':
         start = time.time()
 
     
-    save_name = os.path.join(output_dir, 'faster_rcnn_{}_{}_{}.pth'.format(args.session, epoch, step))
+    save_name = os.path.join(output_dir, 'faster_rcnn_{}_{}_{}_{}.pth'.format(args.session, epoch, step,args.info_name))
     save_checkpoint({
       'session': args.session,
       'epoch': epoch + 1,

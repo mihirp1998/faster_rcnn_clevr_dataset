@@ -18,7 +18,8 @@ import glob
 import uuid
 import scipy.io as sio
 import xml.etree.ElementTree as ET
-
+import ipdb
+st = ipdb.set_trace
 from .imdb import imdb
 from .imdb import ROOT_DIR
 import ds_utils
@@ -38,8 +39,13 @@ class clevr(imdb):
         self._devkit_path = self._get_default_path() if devkit_path is None \
             else devkit_path
         self._data_path = self._devkit_path
-        self._classes = ('__background__',  # always index 0
-                         'cylinder', 'cube', 'sphere')
+
+        if cfg.NO_CLASS:
+            self._classes = ('__background__','single')            
+        else:
+            self._classes = ('__background__',  # always index 0
+                             'cylinder', 'cube', 'sphere')
+
         self._class_to_ind = dict(zip(self.classes, xrange(self.num_classes)))
         self._image_ext = '.jpg'
         self._image_index = self._load_image_set_index()
@@ -100,7 +106,8 @@ class clevr(imdb):
         """
         Return the default path where PASCAL VOC is expected to be installed.
         """
-        return os.path.join(cfg.DATA_DIR, 'CLEVR_RPN_MULTIANGLE_FINAL_MORE_OBJ')
+        # st()
+        return os.path.join(cfg.DATA_DIR, cfg.DATA_DIR_CARE)
 
     def gt_roidb(self):
         """
@@ -295,8 +302,9 @@ class clevr(imdb):
             if cls == '__background__':
                 continue
             filename = self._get_voc_results_file_template().format(cls)
-            rec, prec, ap = voc_eval(
-                filename, annopath, imagesetfile, cls, cachedir, ovthresh=0.5,
+            # st()
+            thresh=0.5
+            rec, prec, ap = voc_eval(filename, annopath, imagesetfile, cls, cachedir, ovthresh=thresh,
                 use_07_metric=use_07_metric)
             aps += [ap]
             print('AP for {} = {:.4f}'.format(cls, ap))
@@ -333,6 +341,7 @@ class clevr(imdb):
         status = subprocess.call(cmd, shell=True)
 
     def evaluate_detections(self, all_boxes, output_dir):
+        # st()
         self._write_voc_results_file(all_boxes)
         self._do_python_eval(output_dir)
         if self.config['matlab_eval']:

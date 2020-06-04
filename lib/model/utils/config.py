@@ -255,6 +255,7 @@ __C.DEDUP_BOXES = 1. / 16.
 # We use the same pixel mean for all networks even though it's not exactly what
 # they were trained with
 __C.PIXEL_MEANS = np.array([[[102.9801, 115.9465, 122.7717]]])
+__C.DEPTH_MEANS = np.array([[[102.9801, 115.9465, 122.7717, 122.7717]]])
 
 # For reproducibility
 __C.RNG_SEED = 3
@@ -267,6 +268,13 @@ __C.ROOT_DIR = osp.abspath(osp.join(osp.dirname(__file__), '..', '..', '..'))
 
 # Data directory
 __C.DATA_DIR = osp.abspath(osp.join(__C.ROOT_DIR, 'data'))
+
+# data directory that i care about
+__C.DATA_DIR_CARE = ''
+
+# if only single class in clevr
+__C.NO_CLASS = True
+
 
 # Name (or path to) the matlab executable
 __C.MATLAB = 'matlab'

@@ -11,7 +11,8 @@ import xml.etree.ElementTree as ET
 import os
 import pickle
 import numpy as np
-
+import ipdb
+st  = ipdb.set_trace
 def parse_rec(filename):
   """ Parse a PASCAL VOC xml file """
   tree = ET.parse(filename)
@@ -149,6 +150,7 @@ def voc_eval(detpath,
   image_ids = [x[0] for x in splitlines]
   confidence = np.array([float(x[1]) for x in splitlines])
   BB = np.array([[float(z) for z in x[2:]] for x in splitlines])
+  # st()
 
   nd = len(image_ids)
   tp = np.zeros(nd)
@@ -160,7 +162,7 @@ def voc_eval(detpath,
     sorted_scores = np.sort(-confidence)
     BB = BB[sorted_ind, :]
     image_ids = [image_ids[x] for x in sorted_ind]
-
+    # st()
     # go down dets and mark TPs and FPs
     for d in range(nd):
       R = class_recs[image_ids[d]]
@@ -197,7 +199,7 @@ def voc_eval(detpath,
             fp[d] = 1.
       else:
         fp[d] = 1.
-
+  # st()
   # compute precision recall
   fp = np.cumsum(fp)
   tp = np.cumsum(tp)

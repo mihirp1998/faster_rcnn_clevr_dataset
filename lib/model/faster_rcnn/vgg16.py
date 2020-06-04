@@ -15,27 +15,34 @@ import math
 import torchvision.models as models
 from model.faster_rcnn.faster_rcnn import _fasterRCNN
 import pdb
+import ipdb
+st = ipdb.set_trace
 
 class vgg16(_fasterRCNN):
-  def __init__(self, classes, pretrained=False, class_agnostic=False):
+  def __init__(self, classes, pretrained=False, class_agnostic=False,depth=False):
     self.model_path = 'data/pretrained_model/vgg16_caffe.pth'
     self.dout_base_model = 512
     self.pretrained = pretrained
     self.class_agnostic = class_agnostic
+    self.depth = depth
 
     _fasterRCNN.__init__(self, classes, class_agnostic)
 
   def _init_modules(self):
     vgg = models.vgg16()
+    # st()
     if self.pretrained:
         print("Loading pretrained weights from %s" %(self.model_path))
         state_dict = torch.load(self.model_path)
         vgg.load_state_dict({k:v for k,v in state_dict.items() if k in vgg.state_dict()})
 
     vgg.classifier = nn.Sequential(*list(vgg.classifier._modules.values())[:-1])
-
+# 
     # not using the last maxpool layer
-    self.RCNN_base = nn.Sequential(*list(vgg.features._modules.values())[:-1])
+    feature_list_layers = list(vgg.features._modules.values())[:-1]
+    if self.depth:
+        feature_list_layers[0] = nn.Conv2d(4,64,kernel_size=(3,3),stride=(1,1),padding=(1,1))
+    self.RCNN_base = nn.Sequential(*feature_list_layers)
 
     # Fix the layers before conv3:
     for layer in range(10):
